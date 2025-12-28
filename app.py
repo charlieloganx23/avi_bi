@@ -727,28 +727,55 @@ def render_model_structure(connector):
         # Resumo
         col1, col2, col3 = st.columns(3)
         
+        tables_count = len(structure.get('tables', []))
+        measures_count = len(structure.get('measures', []))
+        rels_count = len(structure.get('relationships', []))
+        
         with col1:
-            st.metric("📊 Tabelas", len(structure.get('tables', [])))
+            st.metric("📊 Tabelas", tables_count)
         
         with col2:
-            st.metric("📏 Medidas", len(structure.get('measures', [])))
+            st.metric("📏 Medidas", measures_count)
         
         with col3:
-            st.metric("🔗 Relacionamentos", len(structure.get('relationships', [])))
+            st.metric("🔗 Relacionamentos", rels_count)
+        
+        # Se não conseguiu obter nenhuma informação
+        if tables_count == 0 and measures_count == 0:
+            st.warning("⚠️ Não foi possível obter a estrutura detalhada do modelo")
+            st.info("""
+            📋 **Para análise completa do modelo Power BI, você precisa:**
+            
+            1. **Instalar SQL Server Management Studio (SSMS)**
+               - Download: https://aka.ms/ssmsfullsetup
+               
+            2. **OU instalar Analysis Services Client Libraries**
+               - Download: https://docs.microsoft.com/analysis-services/client-libraries
+            
+            Após instalar, reinicie o Python e o Streamlit.
+            
+            💡 **Enquanto isso, você ainda pode:**
+            - ✅ Usar análise de arquivos CSV/Excel (aba "Análise Completa")
+            - ✅ Gerar paletas de cores profissionais
+            - ✅ Usar templates de layout
+            - ✅ Obter sugestões de IA para design
+            """)
+            return
         
         st.divider()
         
         # Detalhes das tabelas
-        st.markdown("#### Tabelas:")
-        for table in structure.get('tables', []):
-            with st.expander(f"📊 {table.get('name', 'Unknown')}"):
-                st.write(f"**Tipo:** {table.get('type', 'N/A')}")
-                st.write(f"**Colunas:** {len(table.get('columns', []))}")
-                
-                if table.get('columns'):
-                    st.markdown("**Lista de Colunas:**")
-                    for col in table['columns']:
-                        st.write(f"- {col.get('name')} ({col.get('dataType', 'Unknown')})")
+        if tables_count > 0:
+            st.markdown("#### Tabelas:")
+            for table in structure.get('tables', []):
+                with st.expander(f"📊 {table.get('name', 'Unknown')}"):
+                    st.write(f"**Tipo:** {table.get('type', 'N/A')}")
+                    st.write(f"**Colunas:** {len(table.get('columns', []))}")
+                    
+                    if table.get('columns'):
+                        st.markdown("**Lista de Colunas:**")
+                        for col in table['columns']:
+                            st.write(f"- {col.get('ColumnName', col.get('name', 'Unknown'))} ({col.get('DataType', col.get('dataType', 'Unknown'))})")
 
 
 def render_visual_analysis(connector, modules):

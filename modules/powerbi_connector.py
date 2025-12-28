@@ -228,6 +228,14 @@ class PowerBIConnector:
             print("❌ Não conectado ao Power BI")
             return {}
         
+        # Tentar via TOM (Tabular Object Model) primeiro - não requer queries
+        print("🔍 Tentando obter estrutura via TOM...")
+        structure = self._get_structure_via_tom()
+        if structure and structure.get('tables'):
+            return structure
+        
+        # Fallback: tentar via queries DAX
+        print("🔍 Tentando obter estrutura via queries DAX...")
         try:
             structure = {
                 'tables': [],
@@ -249,7 +257,7 @@ class PowerBIConnector:
             
             tables_result = self._execute_dax_query(dax_query)
             
-            if tables_result:
+            if tables_result and tables_result.get('success'):
                 for table in tables_result.get('rows', []):
                     table_info = {
                         'name': table.get('TableName'),
@@ -276,8 +284,22 @@ class PowerBIConnector:
             """
             
             measures_result = self._execute_dax_query(measures_query)
-            if measures_result:
+            if measures_result and measures_result.get('success'):
                 structure['measures'] = measures_result.get('rows', [])
+            
+            # Se não conseguiu nada, mostra mensagem de ajuda
+            if not structure['tables'] and not structure['measures']:
+                print("\n⚠️ Não foi possível obter estrutura do modelo")
+                print("📋 Para análise completa do modelo, você precisa:")
+                print("   1. Instalar SQL Server Management Studio (SSMS)")
+                print("      Download: https://aka.ms/ssmsfullsetup")
+                print("   2. OU instalar Analysis Services Client Libraries")
+                print("      Download: https://docs.microsoft.com/analysis-services/client-libraries")
+                print("\n💡 Enquanto isso, você pode:")
+                print("   ✅ Usar análise de arquivos CSV/Excel")
+                print("   ✅ Gerar paletas de cores profissionais")
+                print("   ✅ Usar templates de layout")
+                print("   ✅ Obter sugestões de IA")
             
             self.model_info = structure
             return structure
@@ -522,6 +544,102 @@ class PowerBIConnector:
             sock.close()
             return result == 0
         except:
+            return False
+    
+    def _get_structure_via_tom(self) -> Dict[str, Any]:
+        """
+        Obtém estrutura do modelo via TOM (Tabular Object Model)
+        Funciona sem executar queries DAX
+        """
+        if not self.active_connection:
+            return {}
+        
+        try:
+            import clr
+            
+            # Tentar carregar Microsoft.AnalysisServices.Tabular
+            try:
+                clr.AddReference("Microsoft.AnalysisServices.Tabular")
+                from Microsoft.AnalysisServices.Tabular import Server
+                
+                print("✅ TOM (Tabular Object Model) carregado")
+                
+                # Conectar via TOM
+                server = Server()
+                conn_string = self.active_connection['connection_string']
+                server.Connect(conn_string)
+                
+                # Obter database
+                if server.Databases.Count == 0:
+                    print("⚠️ Nenhum database encontrado")
+                    server.Disconnect()
+                    return {}
+                
+                db = server.Databases[0]
+                model = db.Model
+                
+                structure = {
+                    'tables': [],
+                    'measures': [],
+                    'relationships': []
+                }
+                
+                # Iterar tabelas
+                for table in model.Tables:
+                    if table.Name.startswith('DateTableTemplate'):
+                        continue
+                    
+                    table_info = {
+                        'name': table.Name,
+                        'type': str(table.GetType().Name),
+                        'hidden': table.IsHidden,
+                        'columns': []
+                    }
+                    
+                    # Iterar colunas
+                    for column in table.Columns:
+                        table_info['columns'].append({
+                            'ColumnName': column.Name,
+                            'DataType': str(column.DataType),
+                            'IsHidden': column.IsHidden
+                        })
+                    
+                    # Iterar medidas da tabela
+                    for measure in table.Measures:
+                        structure['measures'].append({
+                            'MeasureName': measure.Name,
+                            'TableName': table.Name,
+                            'Expression': measure.Expression
+                        })
+                    
+                    structure['tables'].append(table_info)
+                
+                # Iterar relacionamentos
+                for rel in model.Relationships:
+                    structure['relationships'].append({
+                        'fromTable': rel.FromTable.Name,
+                        'fromColumn': rel.FromColumn.Name,
+                        'toTable': rel.ToTable.Name,
+                        'toColumn': rel.ToColumn.Name,
+                        'cardinality': str(rel.FromCardinality) + ':' + str(rel.ToCardinality)
+                    })
+                
+                server.Disconnect()
+                
+                print(f"✅ Estrutura obtida via TOM:")
+                print(f"   📊 Tabelas: {len(structure['tables'])}")
+                print(f"   📏 Medidas: {len(structure['measures'])}")
+                print(f"   🔗 Relacionamentos: {len(structure['relationships'])}")
+                
+                return structure
+                
+            except Exception as e:
+                print(f"⚠️ TOM não disponível: {e}")
+                return {}
+                
+        except ImportError:
+            print("⚠️ pythonnet não disponível para TOM")
+            return {}
             return False
     
     # Novos métodos usando MCP Client integrado
