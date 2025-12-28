@@ -1,17 +1,27 @@
 # 📊 Power BI Design Assistant
 
-Assistente inteligente para criação de layouts e visuais profissionais para Power BI, com suporte de IA para sugestões contextualizadas.
+Assistente inteligente para criação de layouts e visuais profissionais para Power BI, com suporte de IA para sugestões contextualizadas e **integração MCP** para análise de modelos.
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.31+-red.svg)
+![MCP](https://img.shields.io/badge/MCP-Integrated-orange.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ## 🚀 Recursos Principais
 
+### 🔌 **NOVO: Integração MCP (Model Context Protocol)**
+- ✅ Detecção automática de instâncias Power BI Desktop
+- ✅ Conexão via XMLA endpoint
+- ✅ Análise de estrutura do modelo (tabelas, colunas, medidas)
+- ✅ Sugestões baseadas no modelo real
+- 🔄 Execução de queries DAX (requer ADOMD Client)
+- 🔄 Validação de expressões DAX
+- 📘 [Ver documentação completa](docs/MCP_INTEGRATION.md)
+
 ### 📈 Análise Inteligente de Dados
 - Análise automática de tipos de dados
 - Detecção de relacionamentos
-- Avaliação de qualidade dos dados
+- Avaliação de qualidade dos dados e saúde do modelo
 - Sugestões de visualizações baseadas nos dados
 
 ### 🎨 Gerador de Paletas de Cores

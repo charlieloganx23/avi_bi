@@ -338,7 +338,7 @@ class DataAnalyzer:
             })
         
         # Sugerir visualizações baseadas no modelo
-        visual_suggestions = self.powerbi_connector.analyze_model_for_visuals()
+        visual_analysis = self.powerbi_connector.analyze_model_for_visuals()
         
         return {
             'connection_info': {
@@ -351,7 +351,9 @@ class DataAnalyzer:
             },
             'tables': tables_analysis,
             'relationships': relationships_analysis,
-            'suggested_visuals': visual_suggestions,
+            'suggested_visuals': visual_analysis.get('suggested_visuals', []),
+            'visual_summary': visual_analysis.get('summary', {}),
+            'visual_recommendations': visual_analysis.get('recommendations', []),
             'model_health': self._assess_model_health(tables_analysis, relationships_analysis)
         }
     
@@ -414,12 +416,14 @@ class DataAnalyzer:
         # Verificar medidas vs colunas calculadas
         total_measures = sum(t['measures_count'] for t in tables)
         if total_measures == 0:
-            issues.append("Modelo não possui medidas DAX")
+            issues.append("💡 Recomendação: Criar medidas DAX para métricas principais (ex: Total Vendas = SUM([Valor]))")
+        elif total_measures < 3:
+            issues.append(f"Apenas {total_measures} medida(s) - considere adicionar mais KPIs")
         
         # Score de saúde
         health_score = 100
         health_score -= len(unconnected_tables) * 10
-        health_score -= (10 if total_measures == 0 else 0)
+        health_score -= (10 if total_measures == 0 else 5 if total_measures < 3 else 0)
         health_score = max(0, health_score)
         
         return {

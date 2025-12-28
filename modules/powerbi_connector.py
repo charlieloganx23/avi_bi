@@ -6,6 +6,7 @@ import json
 import subprocess
 import re
 import socket
+from .mcp_powerbi_client import MCPPowerBIClient
 
 
 class PowerBIConnector:
@@ -16,6 +17,7 @@ class PowerBIConnector:
         self.active_connection = None
         self.model_info = None
         self.connection_name = None
+        self.mcp_client = MCPPowerBIClient()
     
     def is_connected(self) -> bool:
         """Verifica se está conectado a uma instância do Power BI"""
@@ -159,13 +161,17 @@ class PowerBIConnector:
             if dataset_name:
                 connection_string += f";Initial Catalog={dataset_name}"
             
+            # Conecta via MCP Client
+            mcp_connected = self.mcp_client.connect(connection_string)
+            
             # Armazena informações da conexão
             self.active_connection = {
                 'name': f'PowerBI_{port}',
                 'connection_string': connection_string,
                 'port': port,
                 'dataset': dataset_name or 'Model',
-                'data_source': f'localhost:{port}'
+                'data_source': f'localhost:{port}',
+                'mcp_enabled': mcp_connected
             }
             
             self.connection_name = f'PowerBI_{port}'
@@ -174,6 +180,10 @@ class PowerBIConnector:
             print(f"   📊 Dataset: {dataset_name or 'Model'}")
             print(f"   🔌 Porta: {port}")
             print(f"   🔗 Connection String: {connection_string}")
+            if mcp_connected:
+                print(f"   ✅ MCP Client: Ativo (queries DAX disponíveis)")
+            else:
+                print(f"   ⚠️ MCP Client: Modo offline (análise limitada)")
             
             return True
             
@@ -310,23 +320,24 @@ class PowerBIConnector:
         return self._execute_dax_query(query, max_rows)
     
     def _execute_dax_query(self, query: str, max_rows: int = 1000) -> Dict[str, Any]:
-        """Executa query DAX via MCP"""
+        """Executa query DAX via MCP Client"""
         if not self.active_connection:
-            return {}
+            return {'rows': []}
         
-        try:
-            result = self._call_mcp_dax_operation({
-                "operation": "Execute",
-                "query": query,
-                "maxRows": max_rows,
-                "connectionName": self.active_connection['name']
-            })
-            
-            return result if result else {}
-            
-        except Exception as e:
-            print(f"❌ Erro ao executar DAX: {e}")
-            return {}
+        # Tenta usar MCP Client primeiro
+        if self.active_connection.get('mcp_enabled') and self.mcp_client.connection:
+            try:
+                result = self.mcp_client.execute_dax_query(query, max_rows)
+                if result.get('success'):
+                    return result
+                else:
+                    print(f"⚠️ Erro MCP: {result.get('error', 'Unknown')}")
+            except Exception as e:
+                print(f"⚠️ Erro ao executar via MCP: {e}")
+        
+        # Fallback: retorna estrutura vazia
+        print(f"⚠️ Query DAX não disponível (MCP offline)")
+        return {'rows': [], 'columns': []}
     
     def get_sample_data(self, table_name: str, rows: int = 100) -> Dict[str, Any]:
         """
@@ -467,6 +478,9 @@ class PowerBIConnector:
             return True
         
         try:
+            # Desconecta MCP Client
+            self.mcp_client.disconnect()
+            
             # Limpa informações da conexão
             self.active_connection = None
             self.model_info = None
@@ -510,27 +524,60 @@ class PowerBIConnector:
         except:
             return False
     
-    # Métodos auxiliares para chamar os MCP tools
-    def _call_mcp_connection_operation(self, request: Dict) -> Dict:
-        """
-        Chama ferramenta MCP para operações de conexão.
-        """
-        try:
-            # Importa e usa o tool real de connection_operations
-            result = connection_operations({"request": request})
-            return result
-        except Exception as e:
-            print(f"⚠️ Erro ao chamar MCP connection operation: {e}")
-            return {'success': False, 'error': str(e)}
+    # Novos métodos usando MCP Client integrado
     
-    def _call_mcp_dax_operation(self, request: Dict) -> Dict:
+    def create_measure(self, table_name: str, measure_name: str, expression: str) -> Dict[str, Any]:
         """
-        Chama ferramenta MCP para operações DAX.
+        Cria medida DAX no modelo via MCP
+        
+        Args:
+            table_name: Nome da tabela
+            measure_name: Nome da medida
+            expression: Expressão DAX
+            
+        Returns:
+            Resultado da operação
         """
-        try:
-            # Importa e usa o tool real de DAX operations
-            result = dax_query_operations({"request": request})
-            return result
-        except Exception as e:
-            print(f"⚠️ Erro ao chamar MCP DAX operation: {e}")
-            return {'success': False, 'error': str(e)}
+        if not self.active_connection or not self.active_connection.get('mcp_enabled'):
+            return {
+                'success': False,
+                'message': 'MCP não disponível ou desconectado'
+            }
+        
+        return self.mcp_client.create_measure(table_name, measure_name, expression)
+    
+    def apply_theme(self, theme_json: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Aplica tema de cores ao modelo via MCP
+        
+        Args:
+            theme_json: Definição do tema
+            
+        Returns:
+            Resultado da operação
+        """
+        if not self.active_connection or not self.active_connection.get('mcp_enabled'):
+            return {
+                'success': False,
+                'message': 'MCP não disponível ou desconectado'
+            }
+        
+        return self.mcp_client.apply_theme(theme_json)
+    
+    def validate_dax(self, expression: str) -> Dict[str, bool]:
+        """
+        Valida expressão DAX via MCP
+        
+        Args:
+            expression: Expressão DAX
+            
+        Returns:
+            Resultado da validação
+        """
+        if not self.active_connection or not self.active_connection.get('mcp_enabled'):
+            return {
+                'valid': False,
+                'error': 'MCP não disponível'
+            }
+        
+        return self.mcp_client.validate_dax(expression)
