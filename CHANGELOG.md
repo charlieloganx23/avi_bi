@@ -1,17 +1,70 @@
-# Power BI Design Assistant - Versão 1.0
+# Power BI Design Assistant - Changelog
 
 ## 🎯 Resumo do Projeto
 
-Assistente inteligente para criação de dashboards profissionais no Power BI, com suporte a análise de dados, geração de paletas de cores, templates de layout e integração direta com Power BI Desktop.
+Assistente inteligente para criação de dashboards profissionais no Power BI, com suporte a análise de dados, geração de paletas de cores, templates de layout e **integração MCP** para análise avançada de modelos.
 
-## ✨ Funcionalidades Implementadas
+---
+
+## 📦 Versão 1.1.0 (28/12/2025)
+
+### 🚀 Novidades Principais
+
+#### 🔌 Integração MCP (Model Context Protocol)
+- **Novo módulo**: `modules/mcp_powerbi_client.py`
+- Conexão via XMLA endpoint com Analysis Services
+- Suporte a queries DAX via pythonnet + ADOMD.NET
+- Validação de expressões DAX em tempo real
+- Métodos para criação de medidas e aplicação de temas
+- Modo offline funcional (análise sem queries)
+- Modo completo com Microsoft.AnalysisServices.AdomdClient
+
+#### 🐛 Correções
+- **AttributeError em suggested_visuals**: Corrigido retorno do `analyze_model_for_visuals()`
+- Agora retorna lista de dicionários corretamente ao invés do objeto completo
+- **Mensagens de saúde do modelo**: Melhoradas para serem mais informativas
+  - Antes: "Modelo não possui medidas DAX"
+  - Agora: "💡 Recomendação: Criar medidas DAX para métricas principais (ex: Total Vendas = SUM([Valor]))"
+
+#### 📚 Documentação
+- **Novo guia**: `GUIA_USO.md` - Guia rápido de utilização
+- **Novo documento**: `docs/MCP_INTEGRATION.md` - Documentação completa da integração MCP
+- Atualizado `README.md` com badge MCP e informações da integração
+- Novo script de teste: `test_mcp_integration.py`
+
+#### 🔧 Melhorias Técnicas
+- `PowerBIConnector` agora usa `MCPPowerBIClient` internamente
+- Detecção aprimorada de processos msmdsrv (Analysis Services)
+- Fallback inteligente para modo offline quando ADOMD não disponível
+- Mensagens de status mais descritivas sobre MCP
+
+### 📋 Detalhes das Mudanças
+
+#### Arquivos Modificados
+- `modules/powerbi_connector.py`: Integração com MCP Client
+- `modules/data_analyzer.py`: Correção de suggested_visuals e mensagens de saúde
+- `README.md`: Adicionado badge MCP e nova seção
+- `requirements.txt`: Adicionado pythonnet>=3.0.0
+- `CHANGELOG.md`: Este arquivo
+
+#### Arquivos Criados
+- `modules/mcp_powerbi_client.py`: Cliente MCP para Analysis Services
+- `docs/MCP_INTEGRATION.md`: Documentação completa
+- `test_mcp_integration.py`: Script de teste
+- `GUIA_USO.md`: Guia rápido
+
+---
+
+## 📦 Versão 1.0.0 (27/12/2025)
+
+### ✨ Funcionalidades Implementadas
 
 ### 1. **Análise Inteligente de Dados**
 - 📊 Análise automática de DataFrames (CSV/Excel)
 - 🔍 Detecção de tipos semânticos (data, métrica, categoria, moeda, porcentagem)
 - 📈 Sugestões de visualizações apropriadas baseadas nos dados
 - 🏥 Avaliação de qualidade dos dados (completude, duplicatas, valores ausentes)
-- 🔗 Análise de modelos Power BI conectados via MCP
+- 🔗 Análise de modelos Power BI conectados
 
 ### 2. **Geração de Cores Profissionais**
 - 🎨 7 paletas predefinidas (modern_dark, minimal_light, corporate_blue, vibrant_gradient, nature_earth, sunset_warm, tech_neon)
@@ -36,7 +89,6 @@ Assistente inteligente para criação de dashboards profissionais no Power BI, c
 - 🔍 Detecção de processos e portas dinâmicas (Analysis Services)
 - 📊 Análise de estrutura do modelo (tabelas, colunas, medidas, relacionamentos)
 - 🏥 Avaliação de saúde do modelo
-- 🎨 Aplicação de temas diretamente no modelo
 - 💾 Exportação de análises e configurações
 
 ### 5. **Assistente com IA (Opcional)**
