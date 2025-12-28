@@ -88,6 +88,10 @@ class ColorGenerator:
         """Lista todas as paletas disponíveis"""
         return list(self.PRESET_PALETTES.keys())
     
+    def get_available_presets(self) -> List[str]:
+        """Alias para list_presets() - retorna lista de paletas disponíveis"""
+        return self.list_presets()
+    
     def generate_from_base_color(self, base_color: str, scheme: str = "analogous", count: int = 5) -> Dict:
         """
         Gera uma paleta a partir de uma cor base
