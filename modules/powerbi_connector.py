@@ -46,7 +46,7 @@ class PowerBIConnector:
             print("🔍 Buscando processos do Power BI Desktop...")
             result = subprocess.run(
                 ['powershell', '-Command', 
-                 'Get-Process | Where-Object {$_.ProcessName -like "*PBIDesktop*"} | Select-Object Id, MainWindowTitle | Format-Table -HideTableHeaders'],
+                 'Get-Process | Where-Object {$_.ProcessName -like "*PBIDesktop*" -or $_.ProcessName -like "*msmdsrv*"} | Select-Object Id, ProcessName, MainWindowTitle | Format-Table -HideTableHeaders'],
                 capture_output=True,
                 text=True,
                 timeout=10
