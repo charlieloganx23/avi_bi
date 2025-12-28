@@ -1,0 +1,142 @@
+{
+  "name": "Modern Dark Professional",
+  "dataColors": [
+    "#1E88E5",
+    "#FFA726",
+    "#26C6DA",
+    "#66BB6A",
+    "#AB47BC",
+    "#EF5350",
+    "#42A5F5",
+    "#FFA726"
+  ],
+  "background": "#121212",
+  "foreground": "#FFFFFF",
+  "tableAccent": "#1E88E5",
+  "good": "#66BB6A",
+  "neutral": "#FFA726",
+  "bad": "#EF5350",
+  "maximum": "#66BB6A",
+  "center": "#FFA726",
+  "minimum": "#EF5350",
+  "null": "#999999",
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#1E1E1E"
+              }
+            },
+            "transparency": 0
+          }
+        ],
+        "border": [
+          {
+            "color": {
+              "solid": {
+                "color": "#333333"
+              }
+            },
+            "show": false
+          }
+        ],
+        "general": [
+          {
+            "responsive": true
+          }
+        ]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#121212"
+              }
+            },
+            "transparency": 0
+          }
+        ],
+        "outspace": [
+          {
+            "color": {
+              "solid": {
+                "color": "#0A0A0A"
+              }
+            },
+            "transparency": 0
+          }
+        ]
+      }
+    },
+    "card": {
+      "*": {
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#1E1E1E"
+              }
+            },
+            "transparency": 10
+          }
+        ],
+        "border": [
+          {
+            "color": {
+              "solid": {
+                "color": "#333333"
+              }
+            },
+            "show": true,
+            "radius": 8
+          }
+        ],
+        "calloutValue": [
+          {
+            "fontSize": 32,
+            "fontFamily": "Segoe UI"
+          }
+        ],
+        "label": [
+          {
+            "fontSize": 12,
+            "fontFamily": "Segoe UI",
+            "color": {
+              "solid": {
+                "color": "#AAAAAA"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "textClasses": {
+    "callout": {
+      "fontSize": 32,
+      "fontFace": "Segoe UI",
+      "color": "#FFFFFF"
+    },
+    "title": {
+      "fontSize": 18,
+      "fontFace": "Segoe UI Semibold",
+      "color": "#FFFFFF"
+    },
+    "header": {
+      "fontSize": 14,
+      "fontFace": "Segoe UI Semibold",
+      "color": "#E0E0E0"
+    },
+    "label": {
+      "fontSize": 11,
+      "fontFace": "Segoe UI",
+      "color": "#AAAAAA"
+    }
+  }
+}

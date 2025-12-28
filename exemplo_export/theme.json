@@ -1,0 +1,73 @@
+{
+  "name": "Modern Dark",
+  "dataColors": [
+    "#1E88E5",
+    "#FFA726",
+    "#26C6DA",
+    "#66BB6A",
+    "#AB47BC"
+  ],
+  "background": "#121212",
+  "foreground": "#FFFFFF",
+  "tableAccent": "#1E88E5",
+  "primary": "#1E88E5",
+  "secondary": "#FFA726",
+  "accent": "#26C6DA",
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#121212"
+              }
+            },
+            "transparency": 0
+          }
+        ],
+        "border": [
+          {
+            "color": {
+              "solid": {
+                "color": "#1E88E5"
+              }
+            },
+            "show": false
+          }
+        ]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#121212"
+              }
+            },
+            "transparency": 0
+          }
+        ]
+      }
+    }
+  },
+  "textClasses": {
+    "title": {
+      "fontSize": 16,
+      "fontFace": "Segoe UI",
+      "color": "#FFFFFF"
+    },
+    "header": {
+      "fontSize": 14,
+      "fontFace": "Segoe UI Semibold",
+      "color": "#FFFFFF"
+    },
+    "label": {
+      "fontSize": 11,
+      "fontFace": "Segoe UI",
+      "color": "#FFFFFF"
+    }
+  }
+}

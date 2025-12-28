@@ -1,0 +1,123 @@
+{
+  "name": "Minimal Light Professional",
+  "dataColors": [
+    "#2C3E50",
+    "#E74C3C",
+    "#3498DB",
+    "#1ABC9C",
+    "#F39C12",
+    "#9B59B6",
+    "#34495E",
+    "#16A085"
+  ],
+  "background": "#FFFFFF",
+  "foreground": "#2C3E50",
+  "tableAccent": "#3498DB",
+  "good": "#1ABC9C",
+  "neutral": "#F39C12",
+  "bad": "#E74C3C",
+  "maximum": "#1ABC9C",
+  "center": "#F39C12",
+  "minimum": "#E74C3C",
+  "null": "#BDC3C7",
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#FFFFFF"
+              }
+            },
+            "transparency": 0
+          }
+        ],
+        "border": [
+          {
+            "color": {
+              "solid": {
+                "color": "#ECF0F1"
+              }
+            },
+            "show": true
+          }
+        ]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#F8F9FA"
+              }
+            },
+            "transparency": 0
+          }
+        ]
+      }
+    },
+    "card": {
+      "*": {
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#FFFFFF"
+              }
+            },
+            "transparency": 0
+          }
+        ],
+        "border": [
+          {
+            "color": {
+              "solid": {
+                "color": "#E0E0E0"
+              }
+            },
+            "show": true,
+            "radius": 4
+          }
+        ],
+        "dropShadow": [
+          {
+            "show": true,
+            "color": {
+              "solid": {
+                "color": "#000000"
+              }
+            },
+            "transparency": 90,
+            "position": "Outer",
+            "preset": "BottomRight"
+          }
+        ]
+      }
+    }
+  },
+  "textClasses": {
+    "callout": {
+      "fontSize": 36,
+      "fontFace": "Segoe UI Light",
+      "color": "#2C3E50"
+    },
+    "title": {
+      "fontSize": 16,
+      "fontFace": "Segoe UI Semibold",
+      "color": "#2C3E50"
+    },
+    "header": {
+      "fontSize": 14,
+      "fontFace": "Segoe UI",
+      "color": "#34495E"
+    },
+    "label": {
+      "fontSize": 11,
+      "fontFace": "Segoe UI",
+      "color": "#7F8C8D"
+    }
+  }
+}

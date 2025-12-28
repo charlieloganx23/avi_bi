@@ -1,0 +1,23 @@
+{
+  "name": "Corporate Blue",
+  "dataColors": [
+    "#003F87",
+    "#0066CC",
+    "#00A3E0",
+    "#5AC8FA",
+    "#8E8E93",
+    "#002855",
+    "#0080FF",
+    "#007ACC"
+  ],
+  "background": "#F5F7FA",
+  "foreground": "#1A1A1A",
+  "tableAccent": "#0066CC",
+  "good": "#4CAF50",
+  "neutral": "#FFC107",
+  "bad": "#F44336",
+  "maximum": "#00A3E0",
+  "center": "#5AC8FA",
+  "minimum": "#003F87",
+  "null": "#CCCCCC"
+}
