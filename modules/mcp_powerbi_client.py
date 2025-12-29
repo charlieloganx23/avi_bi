@@ -347,7 +347,9 @@ class MCPPowerBIClient:
             }
         
         try:
-            # Query DMV para obter relacionamentos
+            from Microsoft.AnalysisServices.AdomdClient import AdomdCommand
+            
+            # Query DMV para obter relacionamentos (sem EVALUATE)
             query = """
             SELECT 
                 [RELATIONSHIP_NAME],
@@ -360,21 +362,36 @@ class MCPPowerBIClient:
             FROM $SYSTEM.TMSCHEMA_RELATIONSHIPS
             """
             
-            result = self.execute_dax_query(f"EVALUATE {query}", max_rows=10000)
+            command = AdomdCommand(query, self.connection)
+            reader = command.ExecuteReader()
             
-            if result.get('success'):
-                return {
-                    'success': True,
-                    'relationships': result.get('data', []),
-                    'count': len(result.get('data', []))
+            relationships = []
+            
+            while reader.Read():
+                rel = {
+                    'RELATIONSHIP_NAME': str(reader['RELATIONSHIP_NAME']) if reader['RELATIONSHIP_NAME'] else None,
+                    'FROM_TABLE': str(reader['FROM_TABLE']) if reader['FROM_TABLE'] else None,
+                    'FROM_COLUMN': str(reader['FROM_COLUMN']) if reader['FROM_COLUMN'] else None,
+                    'TO_TABLE': str(reader['TO_TABLE']) if reader['TO_TABLE'] else None,
+                    'TO_COLUMN': str(reader['TO_COLUMN']) if reader['TO_COLUMN'] else None,
+                    'CROSS_FILTERING_BEHAVIOR': str(reader['CROSS_FILTERING_BEHAVIOR']) if reader['CROSS_FILTERING_BEHAVIOR'] else None,
+                    'IS_ACTIVE': bool(reader['IS_ACTIVE']) if reader['IS_ACTIVE'] else False
                 }
-            else:
-                return result
+                relationships.append(rel)
+            
+            reader.Close()
+            
+            return {
+                'success': True,
+                'relationships': relationships,
+                'count': len(relationships)
+            }
                 
         except Exception as e:
             return {
                 'success': False,
-                'message': f'Erro ao obter relacionamentos: {str(e)}'
+                'message': f'Erro ao obter relacionamentos: {str(e)}',
+                'error': str(e)
             }
     
     def create_relationship(self, from_table: str, from_column: str, 
