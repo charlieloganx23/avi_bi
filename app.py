@@ -1651,7 +1651,7 @@ def render_relationships(modules):
         
         # Obter estrutura do modelo
         if connector.is_connected():
-            structure = connector.get_structure()
+            structure = connector.get_model_structure()
             tables = structure.get('tables', [])
             table_names = [t['name'] for t in tables]
             
@@ -1791,7 +1791,7 @@ def render_performance_analysis(modules):
         
         # Obter lista de medidas
         if connector.is_connected():
-            structure = connector.get_structure()
+            structure = connector.get_model_structure()
             tables = structure.get('tables', [])
             
             # Extrair todas as medidas
