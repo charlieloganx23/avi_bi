@@ -92,6 +92,10 @@ def main():
     # Inicializa módulos
     modules = initialize_modules()
     
+    # Adiciona connector ao dicionário modules se existir
+    if 'pbi_connector' in st.session_state:
+        modules['connector'] = st.session_state.pbi_connector
+    
     # Sidebar
     with st.sidebar:
         st.image("https://img.icons8.com/color/96/000000/power-bi.png", width=80)
@@ -933,12 +937,18 @@ def render_dax_console(modules):
     
     # Verificar conexão
     connector = modules.get('connector')
-    if not connector or not connector.is_connected():
+    if not connector:
         st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
         st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
         return
     
-    st.success(f"✅ Conectado: {connector.active_connection.get('dataset', 'Unknown')}")
+    status = connector.get_connection_status()
+    if not status['connected']:
+        st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
+        st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
+        return
+    
+    st.success(f"✅ Conectado: {status.get('dataset', 'Unknown')}")
     
     # Console DAX
     st.markdown("### 📝 Editor DAX")
@@ -1071,12 +1081,18 @@ def render_create_measure(modules):
     
     # Verificar conexão
     connector = modules.get('connector')
-    if not connector or not connector.is_connected():
+    if not connector:
         st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
         st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
         return
     
-    st.success(f"✅ Conectado: {connector.active_connection.get('dataset', 'Unknown')}")
+    status = connector.get_connection_status()
+    if not status['connected']:
+        st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
+        st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
+        return
+    
+    st.success(f"✅ Conectado: {status.get('dataset', 'Unknown')}")
     
     # Obter estrutura
     structure = connector.get_model_structure()
@@ -1265,12 +1281,18 @@ def render_validate_dax(modules):
     
     # Verificar conexão
     connector = modules.get('connector')
-    if not connector or not connector.is_connected():
+    if not connector:
         st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
         st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
         return
     
-    st.success(f"✅ Conectado: {connector.active_connection.get('dataset', 'Unknown')}")
+    status = connector.get_connection_status()
+    if not status['connected']:
+        st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
+        st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
+        return
+    
+    st.success(f"✅ Conectado: {status.get('dataset', 'Unknown')}")
     
     st.markdown("""
     ### 🔍 Como Funciona
