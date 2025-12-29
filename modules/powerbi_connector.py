@@ -770,3 +770,84 @@ class PowerBIConnector:
             }
         
         return self.mcp_client.validate_dax(expression)
+    
+    def apply_theme_to_model(self, theme_json: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Aplica tema ao modelo Power BI aberto via TMSL
+        
+        Args:
+            theme_json: JSON do tema Power BI
+            
+        Returns:
+            Resultado da aplicação
+        """
+        if not self.active_connection or not self.active_connection.get('mcp_enabled'):
+            return {
+                'success': False,
+                'message': 'Não conectado ao Power BI Desktop'
+            }
+        
+        return self.mcp_client.apply_theme_tmsl(theme_json)
+    
+    def get_relationships(self) -> Dict[str, Any]:
+        """
+        Obtém todos os relacionamentos do modelo
+        
+        Returns:
+            Lista de relacionamentos com detalhes
+        """
+        if not self.active_connection or not self.active_connection.get('mcp_enabled'):
+            return {
+                'success': False,
+                'message': 'Não conectado'
+            }
+        
+        return self.mcp_client.get_relationships()
+    
+    def create_relationship(self, from_table: str, from_column: str,
+                          to_table: str, to_column: str,
+                          cardinality: str = "ManyToOne",
+                          cross_filter: str = "SingleDirection") -> Dict[str, Any]:
+        """
+        Cria novo relacionamento entre tabelas
+        
+        Args:
+            from_table: Tabela de origem
+            from_column: Coluna de origem  
+            to_table: Tabela de destino
+            to_column: Coluna de destino
+            cardinality: Tipo de cardinalidade
+            cross_filter: Direção do filtro cruzado
+            
+        Returns:
+            Resultado da criação
+        """
+        if not self.active_connection or not self.active_connection.get('mcp_enabled'):
+            return {
+                'success': False,
+                'message': 'Não conectado'
+            }
+        
+        return self.mcp_client.create_relationship(
+            from_table, from_column, to_table, to_column,
+            cardinality, cross_filter
+        )
+    
+    def analyze_measure_performance(self, measure_name: str, iterations: int = 5) -> Dict[str, Any]:
+        """
+        Analisa performance de uma medida específica
+        
+        Args:
+            measure_name: Nome da medida
+            iterations: Número de execuções para cálculo de média
+            
+        Returns:
+            Estatísticas de performance
+        """
+        if not self.active_connection or not self.active_connection.get('mcp_enabled'):
+            return {
+                'success': False,
+                'message': 'Não conectado'
+            }
+        
+        return self.mcp_client.analyze_measure_performance(measure_name, iterations)

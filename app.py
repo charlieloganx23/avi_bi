@@ -104,7 +104,9 @@ def main():
         # Seleção de modo
         mode = st.radio(
             "Modo de Operação",
-            ["🎨 Análise Completa", "🔌 Conectar ao Power BI", "✏️ Console DAX", "📏 Criar Medida", "✅ Validar DAX", "🎨 Paletas de Cores", "📐 Templates de Layout", "🤖 Assistente IA"],
+            ["🎨 Análise Completa", "🔌 Conectar ao Power BI", "✏️ Console DAX", "📏 Criar Medida", 
+             "✅ Validar DAX", "🎨 Aplicar Tema", "🔗 Relacionamentos", "⚡ Performance", 
+             "🎨 Paletas de Cores", "📐 Templates de Layout", "🤖 Assistente IA"],
             help="Escolha o que deseja fazer"
         )
         
@@ -143,6 +145,12 @@ def main():
         render_create_measure(modules)
     elif mode == "✅ Validar DAX":
         render_validate_dax(modules)
+    elif mode == "🎨 Aplicar Tema":
+        render_apply_theme(modules)
+    elif mode == "🔗 Relacionamentos":
+        render_relationships(modules)
+    elif mode == "⚡ Performance":
+        render_performance_analysis(modules)
     elif mode == "🎨 Paletas de Cores":
         render_color_generator(modules)
     elif mode == "📐 Templates de Layout":
@@ -1434,5 +1442,456 @@ def render_validate_dax(modules):
                         st.error(result['error'])
 
 
+def render_apply_theme(modules):
+    """Renderiza interface para aplicar temas ao modelo Power BI"""
+    st.header("🎨 Aplicar Tema ao Modelo")
+    
+    # Verificar conexão
+    connector = modules.get('connector')
+    if not connector:
+        st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
+        st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
+        return
+    
+    status = connector.get_connection_status()
+    if not status['connected']:
+        st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
+        st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
+        return
+    
+    st.success(f"✅ Conectado: {status.get('dataset', 'Unknown')}")
+    
+    st.markdown("""
+    ### 🎨 Como Funciona
+    Aplica um tema de cores diretamente no modelo Power BI aberto, modificando as cores padrão de todos os visuais.
+    
+    ⚠️ **Importante**: Esta operação modifica o modelo Power BI. Faça backup antes de aplicar.
+    """)
+    
+    st.divider()
+    
+    # Opções de tema
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("📋 Temas Predefinidos")
+        
+        predefined_themes = {
+            "Corporativo Azul": {
+                "name": "Corporativo Azul",
+                "dataColors": ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"],
+                "background": "#FFFFFF",
+                "foreground": "#000000",
+                "tableAccent": "#1f77b4"
+            },
+            "Moderno Escuro": {
+                "name": "Moderno Escuro",
+                "dataColors": ["#00d4ff", "#ff6b6b", "#4ecdc4", "#ffe66d", "#a8dadc"],
+                "background": "#1a1a2e",
+                "foreground": "#eaeaea",
+                "tableAccent": "#00d4ff"
+            },
+            "Natura Verde": {
+                "name": "Natura Verde",
+                "dataColors": ["#2d6a4f", "#40916c", "#52b788", "#74c69d", "#95d5b2"],
+                "background": "#FFFFFF",
+                "foreground": "#1b4332",
+                "tableAccent": "#2d6a4f"
+            }
+        }
+        
+        selected_theme = st.selectbox("Escolha um tema:", list(predefined_themes.keys()))
+        
+        if st.button("🎨 Aplicar Tema Selecionado"):
+            theme = predefined_themes[selected_theme]
+            
+            with st.spinner(f"Aplicando tema '{selected_theme}'..."):
+                result = connector.apply_theme_to_model(theme)
+                
+                if result.get('success'):
+                    st.success(f"✅ {result.get('message')}")
+                    st.info("💡 Atualize os visuais no Power BI Desktop para ver as mudanças")
+                else:
+                    st.error(f"❌ {result.get('message')}")
+    
+    with col2:
+        st.subheader("🎨 Preview do Tema")
+        
+        if selected_theme:
+            theme = predefined_themes[selected_theme]
+            
+            st.markdown(f"**{theme['name']}**")
+            
+            # Mostrar paleta de cores
+            st.markdown("**Cores de Dados:**")
+            colors_html = ""
+            for color in theme['dataColors']:
+                colors_html += f'<div style="display:inline-block; width:40px; height:40px; background-color:{color}; margin:5px; border-radius:5px; border:1px solid #ccc;"></div>'
+            st.markdown(colors_html, unsafe_allow_html=True)
+            
+            # Configurações adicionais
+            st.markdown(f"**Background:** {theme['background']}")
+            st.markdown(f"**Foreground:** {theme['foreground']}")
+            st.markdown(f"**Table Accent:** {theme['tableAccent']}")
+    
+    st.divider()
+    
+    # Tema personalizado
+    with st.expander("✏️ Criar Tema Personalizado"):
+        st.markdown("Defina seu próprio tema com cores personalizadas:")
+        
+        custom_name = st.text_input("Nome do Tema:", "Meu Tema")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            color1 = st.color_picker("Cor 1:", "#1f77b4")
+            color2 = st.color_picker("Cor 2:", "#ff7f0e")
+        
+        with col2:
+            color3 = st.color_picker("Cor 3:", "#2ca02c")
+            color4 = st.color_picker("Cor 4:", "#d62728")
+        
+        with col3:
+            color5 = st.color_picker("Cor 5:", "#9467bd")
+            background = st.color_picker("Background:", "#FFFFFF")
+        
+        if st.button("🎨 Aplicar Tema Personalizado"):
+            custom_theme = {
+                "name": custom_name,
+                "dataColors": [color1, color2, color3, color4, color5],
+                "background": background,
+                "foreground": "#000000",
+                "tableAccent": color1
+            }
+            
+            with st.spinner(f"Aplicando tema '{custom_name}'..."):
+                result = connector.apply_theme_to_model(custom_theme)
+                
+                if result.get('success'):
+                    st.success(f"✅ {result.get('message')}")
+                    st.info("💡 Atualize os visuais no Power BI Desktop para ver as mudanças")
+                else:
+                    st.error(f"❌ {result.get('message')}")
+
+
+def render_relationships(modules):
+    """Renderiza interface de gestão de relacionamentos"""
+    st.header("🔗 Gestão de Relacionamentos")
+    
+    # Verificar conexão
+    connector = modules.get('connector')
+    if not connector:
+        st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
+        st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
+        return
+    
+    status = connector.get_connection_status()
+    if not status['connected']:
+        st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
+        st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
+        return
+    
+    st.success(f"✅ Conectado: {status.get('dataset', 'Unknown')}")
+    
+    st.markdown("""
+    ### 🔗 Visualizar e Gerenciar Relacionamentos
+    Veja todos os relacionamentos do modelo e crie novos conforme necessário.
+    """)
+    
+    st.divider()
+    
+    # Tab para diferentes operações
+    tab1, tab2, tab3 = st.tabs(["📊 Relacionamentos Existentes", "➕ Criar Novo", "📈 Análise de Grafo"])
+    
+    with tab1:
+        st.subheader("📊 Relacionamentos Atuais")
+        
+        if st.button("🔄 Atualizar Lista"):
+            with st.spinner("Carregando relacionamentos..."):
+                result = connector.get_relationships()
+                
+                if result.get('success'):
+                    st.session_state.relationships = result.get('relationships', [])
+                    st.success(f"✅ {result.get('count', 0)} relacionamentos carregados")
+                else:
+                    st.error(f"❌ {result.get('message')}")
+        
+        if 'relationships' in st.session_state and st.session_state.relationships:
+            rels = st.session_state.relationships
+            
+            st.metric("Total de Relacionamentos", len(rels))
+            
+            # Tabela de relacionamentos
+            st.markdown("**Detalhes dos Relacionamentos:**")
+            
+            for idx, rel in enumerate(rels, 1):
+                with st.expander(f"🔗 {idx}. {rel.get('FROM_TABLE', 'Unknown')} → {rel.get('TO_TABLE', 'Unknown')}"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("**Origem:**")
+                        st.write(f"Tabela: `{rel.get('FROM_TABLE')}`")
+                        st.write(f"Coluna: `{rel.get('FROM_COLUMN')}`")
+                    
+                    with col2:
+                        st.markdown("**Destino:**")
+                        st.write(f"Tabela: `{rel.get('TO_TABLE')}`")
+                        st.write(f"Coluna: `{rel.get('TO_COLUMN')}`")
+                    
+                    st.markdown(f"**Filtro Cruzado:** {rel.get('CROSS_FILTERING_BEHAVIOR', 'N/A')}")
+                    st.markdown(f"**Ativo:** {'✅ Sim' if rel.get('IS_ACTIVE') else '❌ Não'}")
+        else:
+            st.info("👆 Clique em 'Atualizar Lista' para carregar os relacionamentos")
+    
+    with tab2:
+        st.subheader("➕ Criar Novo Relacionamento")
+        
+        st.markdown("Preencha os detalhes do novo relacionamento:")
+        
+        # Obter estrutura do modelo
+        if connector.is_connected():
+            structure = connector.get_structure()
+            tables = structure.get('tables', [])
+            table_names = [t['name'] for t in tables]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**📤 Origem (De):**")
+                from_table = st.selectbox("Tabela de Origem:", table_names, key="from_table")
+                
+                # Colunas da tabela selecionada
+                from_table_data = next((t for t in tables if t['name'] == from_table), None)
+                if from_table_data:
+                    from_columns = [c.get('ColumnName') or c.get('name', 'Unknown') 
+                                   for c in from_table_data.get('columns', [])]
+                    from_column = st.selectbox("Coluna de Origem:", from_columns, key="from_col")
+            
+            with col2:
+                st.markdown("**📥 Destino (Para):**")
+                to_table = st.selectbox("Tabela de Destino:", table_names, key="to_table")
+                
+                # Colunas da tabela selecionada
+                to_table_data = next((t for t in tables if t['name'] == to_table), None)
+                if to_table_data:
+                    to_columns = [c.get('ColumnName') or c.get('name', 'Unknown') 
+                                 for c in to_table_data.get('columns', [])]
+                    to_column = st.selectbox("Coluna de Destino:", to_columns, key="to_col")
+            
+            st.divider()
+            
+            col3, col4 = st.columns(2)
+            
+            with col3:
+                cardinality = st.selectbox(
+                    "Cardinalidade:",
+                    ["ManyToOne", "OneToMany", "OneToOne", "ManyToMany"],
+                    help="Tipo de relacionamento entre as tabelas"
+                )
+            
+            with col4:
+                cross_filter = st.selectbox(
+                    "Direção do Filtro:",
+                    ["SingleDirection", "BothDirections"],
+                    help="Como os filtros serão propagados"
+                )
+            
+            st.divider()
+            
+            if st.button("➕ Criar Relacionamento"):
+                with st.spinner("Criando relacionamento..."):
+                    result = connector.create_relationship(
+                        from_table, from_column,
+                        to_table, to_column,
+                        cardinality, cross_filter
+                    )
+                    
+                    if result.get('success'):
+                        st.success(f"✅ {result.get('message')}")
+                        st.info("💡 Atualize o modelo no Power BI Desktop para ver o novo relacionamento")
+                    else:
+                        st.error(f"❌ {result.get('message')}")
+                        if 'error' in result:
+                            st.code(result['error'])
+        else:
+            st.warning("⚠️ Não foi possível obter a estrutura do modelo")
+    
+    with tab3:
+        st.subheader("📈 Análise de Grafo de Relacionamentos")
+        
+        st.info("🚧 Em desenvolvimento: Visualização gráfica dos relacionamentos")
+        
+        if 'relationships' in st.session_state and st.session_state.relationships:
+            rels = st.session_state.relationships
+            
+            # Estatísticas básicas
+            st.markdown("**📊 Estatísticas:**")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                total = len(rels)
+                st.metric("Total", total)
+            
+            with col2:
+                active = sum(1 for r in rels if r.get('IS_ACTIVE'))
+                st.metric("Ativos", active)
+            
+            with col3:
+                bidirectional = sum(1 for r in rels if r.get('CROSS_FILTERING_BEHAVIOR') == 'BothDirections')
+                st.metric("Bidirecionais", bidirectional)
+            
+            # Lista de tabelas envolvidas
+            all_tables = set()
+            for rel in rels:
+                all_tables.add(rel.get('FROM_TABLE'))
+                all_tables.add(rel.get('TO_TABLE'))
+            
+            st.markdown(f"**Tabelas envolvidas:** {len(all_tables)}")
+            st.write(sorted(list(all_tables)))
+
+
+def render_performance_analysis(modules):
+    """Renderiza análise de performance de medidas"""
+    st.header("⚡ Análise de Performance de Medidas")
+    
+    # Verificar conexão
+    connector = modules.get('connector')
+    if not connector:
+        st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
+        st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
+        return
+    
+    status = connector.get_connection_status()
+    if not status['connected']:
+        st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
+        st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
+        return
+    
+    st.success(f"✅ Conectado: {status.get('dataset', 'Unknown')}")
+    
+    st.markdown("""
+    ### ⚡ Análise de Performance
+    Avalie o tempo de execução das suas medidas DAX e identifique gargalos de performance.
+    
+    **Métricas analisadas:**
+    - ⏱️ Tempo de execução (cold start vs warm)
+    - 📊 Estatísticas (média, min, max)
+    - 🎯 Rating de performance
+    """)
+    
+    st.divider()
+    
+    # Tabs para diferentes análises
+    tab1, tab2, tab3 = st.tabs(["🔍 Análise Individual", "📊 Comparação", "🏆 Ranking"])
+    
+    with tab1:
+        st.subheader("🔍 Analisar Medida Individual")
+        
+        # Obter lista de medidas
+        if connector.is_connected():
+            structure = connector.get_structure()
+            tables = structure.get('tables', [])
+            
+            # Extrair todas as medidas
+            all_measures = []
+            for table in tables:
+                for measure in table.get('measures', []):
+                    measure_name = measure.get('MeasureName') or measure.get('name', 'Unknown')
+                    all_measures.append(f"{table['name']}[{measure_name}]")
+            
+            if all_measures:
+                selected_measure = st.selectbox(
+                    "Selecione uma medida:",
+                    all_measures,
+                    help="Escolha a medida para análise de performance"
+                )
+                
+                iterations = st.slider(
+                    "Número de execuções:",
+                    min_value=1,
+                    max_value=10,
+                    value=5,
+                    help="Mais execuções = resultado mais preciso, mas demora mais"
+                )
+                
+                if st.button("⚡ Analisar Performance"):
+                    # Extrair nome da medida
+                    measure_name = selected_measure.split('[')[1].rstrip(']')
+                    
+                    with st.spinner(f"Analisando '{measure_name}' ({iterations} execuções)..."):
+                        result = connector.analyze_measure_performance(measure_name, iterations)
+                        
+                        if result.get('success'):
+                            st.success(f"✅ Análise concluída para '{measure_name}'")
+                            
+                            # Métricas principais
+                            col1, col2, col3, col4 = st.columns(4)
+                            
+                            with col1:
+                                st.metric("Tempo Médio", f"{result['avg_time_ms']:.2f} ms")
+                            
+                            with col2:
+                                st.metric("Tempo Mínimo", f"{result['min_time_ms']:.2f} ms")
+                            
+                            with col3:
+                                st.metric("Tempo Máximo", f"{result['max_time_ms']:.2f} ms")
+                            
+                            with col4:
+                                rating = result['performance_rating']
+                                emoji = {"Excelente": "🚀", "Boa": "✅", "Aceitável": "⚠️", "Lenta": "🐌"}
+                                st.metric("Performance", f"{emoji.get(rating, '❓')} {rating}")
+                            
+                            st.divider()
+                            
+                            # Detalhes
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                st.markdown("**⏱️ Cold Start vs Warm:**")
+                                st.write(f"Cold Start: {result['cold_start_ms']:.2f} ms")
+                                if result.get('warm_avg_ms'):
+                                    st.write(f"Warm Avg: {result['warm_avg_ms']:.2f} ms")
+                                    improvement = ((result['cold_start_ms'] - result['warm_avg_ms']) / result['cold_start_ms']) * 100
+                                    st.write(f"Cache Improvement: {improvement:.1f}%")
+                            
+                            with col2:
+                                st.markdown("**📊 Todos os Tempos:**")
+                                for idx, time in enumerate(result['execution_times'], 1):
+                                    st.write(f"Execução {idx}: {time:.2f} ms")
+                            
+                            # Recomendações
+                            st.divider()
+                            st.markdown("### 💡 Recomendações")
+                            
+                            if result['performance_rating'] == "Excelente":
+                                st.success("✨ Medida muito rápida! Não requer otimização.")
+                            elif result['performance_rating'] == "Boa":
+                                st.info("👍 Performance adequada. Considere otimizar se usada intensivamente.")
+                            elif result['performance_rating'] == "Aceitável":
+                                st.warning("⚠️ Medida pode ser otimizada. Considere:\n- Usar variáveis para cálculos repetidos\n- Evitar funções iterativas (FILTER, SUMX)")
+                            else:
+                                st.error("🐌 Medida lenta! Requer otimização urgente:\n- Revisar uso de FILTER\n- Considerar agregações pré-calculadas\n- Verificar relacionamentos")
+                        
+                        else:
+                            st.error(f"❌ {result.get('message')}")
+                            if 'error' in result:
+                                st.code(result['error'])
+            else:
+                st.warning("⚠️ Nenhuma medida encontrada no modelo")
+        else:
+            st.warning("⚠️ Não foi possível obter a estrutura do modelo")
+    
+    with tab2:
+        st.subheader("📊 Comparar Medidas")
+        st.info("🚧 Em desenvolvimento: Comparação de múltiplas medidas")
+    
+    with tab3:
+        st.subheader("🏆 Ranking de Performance")
+        st.info("🚧 Em desenvolvimento: Ranking automático de todas as medidas")
+
+
 if __name__ == "__main__":
     main()
+

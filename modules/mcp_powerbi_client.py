@@ -277,3 +277,252 @@ class MCPPowerBIClient:
                 'valid': False,
                 'error': str(e)
             }
+    
+    def apply_theme_tmsl(self, theme_json: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Aplica tema ao modelo via TMSL (Tabular Model Scripting Language)
+        
+        Args:
+            theme_json: JSON do tema Power BI
+            
+        Returns:
+            Resultado da aplicação
+        """
+        if not self.connection or not self._adomd_loaded:
+            return {
+                'success': False,
+                'message': 'Não conectado ao Analysis Services'
+            }
+        
+        try:
+            from Microsoft.AnalysisServices.AdomdClient import AdomdCommand
+            
+            # Criar script TMSL para aplicar tema
+            # Temas são aplicados através de annotations no modelo
+            tmsl_script = {
+                "alter": {
+                    "object": {
+                        "database": self.connection.Database
+                    },
+                    "database": {
+                        "annotations": [
+                            {
+                                "name": "PBI_ProTooling",
+                                "value": json.dumps({
+                                    "customThemes": [theme_json]
+                                })
+                            }
+                        ]
+                    }
+                }
+            }
+            
+            command = AdomdCommand(json.dumps(tmsl_script), self.connection)
+            command.Execute()
+            
+            return {
+                'success': True,
+                'message': f'Tema "{theme_json.get("name", "Custom")}" aplicado com sucesso',
+                'theme_name': theme_json.get('name', 'Custom')
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'message': f'Erro ao aplicar tema: {str(e)}',
+                'error': str(e)
+            }
+    
+    def get_relationships(self) -> Dict[str, Any]:
+        """
+        Obtém todos os relacionamentos do modelo
+        
+        Returns:
+            Lista de relacionamentos
+        """
+        if not self.connection or not self._adomd_loaded:
+            return {
+                'success': False,
+                'message': 'Não conectado'
+            }
+        
+        try:
+            # Query DMV para obter relacionamentos
+            query = """
+            SELECT 
+                [RELATIONSHIP_NAME],
+                [FROM_TABLE],
+                [FROM_COLUMN],
+                [TO_TABLE],
+                [TO_COLUMN],
+                [CROSS_FILTERING_BEHAVIOR],
+                [IS_ACTIVE]
+            FROM $SYSTEM.TMSCHEMA_RELATIONSHIPS
+            """
+            
+            result = self.execute_dax_query(f"EVALUATE {query}", max_rows=10000)
+            
+            if result.get('success'):
+                return {
+                    'success': True,
+                    'relationships': result.get('data', []),
+                    'count': len(result.get('data', []))
+                }
+            else:
+                return result
+                
+        except Exception as e:
+            return {
+                'success': False,
+                'message': f'Erro ao obter relacionamentos: {str(e)}'
+            }
+    
+    def create_relationship(self, from_table: str, from_column: str, 
+                          to_table: str, to_column: str, 
+                          cardinality: str = "ManyToOne",
+                          cross_filter: str = "SingleDirection") -> Dict[str, Any]:
+        """
+        Cria um novo relacionamento via TMSL
+        
+        Args:
+            from_table: Tabela de origem
+            from_column: Coluna de origem
+            to_table: Tabela de destino
+            to_column: Coluna de destino
+            cardinality: Cardinalidade (ManyToOne, OneToMany, OneToOne, ManyToMany)
+            cross_filter: Direção do filtro (SingleDirection, BothDirections)
+            
+        Returns:
+            Resultado da criação
+        """
+        if not self.connection or not self._adomd_loaded:
+            return {
+                'success': False,
+                'message': 'Não conectado'
+            }
+        
+        try:
+            from Microsoft.AnalysisServices.AdomdClient import AdomdCommand
+            
+            tmsl_script = {
+                "createOrReplace": {
+                    "object": {
+                        "database": self.connection.Database,
+                        "table": from_table,
+                        "relationship": f"{from_table}_{to_table}"
+                    },
+                    "relationship": {
+                        "name": f"{from_table}_{to_table}",
+                        "fromTable": from_table,
+                        "fromColumn": from_column,
+                        "toTable": to_table,
+                        "toColumn": to_column,
+                        "crossFilteringBehavior": cross_filter,
+                        "cardinality": cardinality,
+                        "isActive": True
+                    }
+                }
+            }
+            
+            command = AdomdCommand(json.dumps(tmsl_script), self.connection)
+            command.Execute()
+            
+            return {
+                'success': True,
+                'message': f'Relacionamento criado: {from_table}.{from_column} -> {to_table}.{to_column}',
+                'relationship': f"{from_table}_{to_table}"
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'message': f'Erro ao criar relacionamento: {str(e)}',
+                'error': str(e)
+            }
+    
+    def analyze_measure_performance(self, measure_name: str, iterations: int = 5) -> Dict[str, Any]:
+        """
+        Analisa performance de uma medida
+        
+        Args:
+            measure_name: Nome da medida a analisar
+            iterations: Número de execuções para média
+            
+        Returns:
+            Estatísticas de performance
+        """
+        if not self.connection or not self._adomd_loaded:
+            return {
+                'success': False,
+                'message': 'Não conectado'
+            }
+        
+        try:
+            import time
+            
+            execution_times = []
+            
+            for i in range(iterations):
+                # Limpa cache antes de cada execução
+                if i > 0:  # Não limpa na primeira para ter cold start
+                    clear_cache_query = """
+                    EVALUATE 
+                    ROW("CacheClear", 1)
+                    """
+                    self.execute_dax_query(clear_cache_query, max_rows=1)
+                
+                # Executa medida e mede tempo
+                query = f"""
+                DEFINE
+                    VAR _Start = NOW()
+                    VAR _Result = [{measure_name}]
+                    VAR _End = NOW()
+                EVALUATE
+                ROW(
+                    "MeasureName", "{measure_name}",
+                    "Result", _Result,
+                    "ExecutionTime", _End - _Start
+                )
+                """
+                
+                start_time = time.time()
+                result = self.execute_dax_query(query, max_rows=1)
+                end_time = time.time()
+                
+                client_time = (end_time - start_time) * 1000  # em ms
+                execution_times.append(client_time)
+            
+            # Calcula estatísticas
+            avg_time = sum(execution_times) / len(execution_times)
+            min_time = min(execution_times)
+            max_time = max(execution_times)
+            
+            # Classificação de performance
+            if avg_time < 100:
+                performance_rating = "Excelente"
+            elif avg_time < 500:
+                performance_rating = "Boa"
+            elif avg_time < 2000:
+                performance_rating = "Aceitável"
+            else:
+                performance_rating = "Lenta"
+            
+            return {
+                'success': True,
+                'measure_name': measure_name,
+                'iterations': iterations,
+                'avg_time_ms': round(avg_time, 2),
+                'min_time_ms': round(min_time, 2),
+                'max_time_ms': round(max_time, 2),
+                'cold_start_ms': round(execution_times[0], 2),
+                'warm_avg_ms': round(sum(execution_times[1:]) / (len(execution_times) - 1), 2) if len(execution_times) > 1 else None,
+                'performance_rating': performance_rating,
+                'execution_times': [round(t, 2) for t in execution_times]
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'message': f'Erro ao analisar performance: {str(e)}',
+                'error': str(e)
+            }
