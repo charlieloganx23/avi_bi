@@ -927,11 +927,6 @@ def render_powerbi_export(connector, modules):
                 st.warning("⚠️ Execute a análise do modelo primeiro")
 
 
-if __name__ == "__main__":
-
-    main()
-
-
 def render_dax_console(modules):
     """Renderiza console DAX interativo"""
     st.header("✏️ Console DAX Interativo")
@@ -1417,3 +1412,5 @@ def render_validate_dax(modules):
                         st.error(result['error'])
 
 
+if __name__ == "__main__":
+    main()
