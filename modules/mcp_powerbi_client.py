@@ -335,7 +335,7 @@ class MCPPowerBIClient:
     
     def get_relationships(self) -> Dict[str, Any]:
         """
-        Obtém todos os relacionamentos do modelo
+        Obtém todos os relacionamentos do modelo via TOM
         
         Returns:
             Lista de relacionamentos
@@ -347,39 +347,58 @@ class MCPPowerBIClient:
             }
         
         try:
-            from Microsoft.AnalysisServices.AdomdClient import AdomdCommand
+            import clr
+            import sys
+            import os
             
-            # Query DMV para obter relacionamentos (sem EVALUATE)
-            query = """
-            SELECT 
-                [RELATIONSHIP_NAME],
-                [FROM_TABLE],
-                [FROM_COLUMN],
-                [TO_TABLE],
-                [TO_COLUMN],
-                [CROSS_FILTERING_BEHAVIOR],
-                [IS_ACTIVE]
-            FROM $SYSTEM.TMSCHEMA_RELATIONSHIPS
-            """
+            # Adicionar diretórios conhecidos das DLLs ao PATH
+            dll_paths = [
+                r"C:\Program Files\Microsoft.NET\ADOMD.NET\160",
+                r"C:\Program Files (x86)\Microsoft SQL Server Management Studio 20\Common7\IDE",
+                r"C:\Program Files\Microsoft SQL Server\160\DTS\Binn",
+                r"C:\Program Files\Microsoft SQL Server\160\SDK\Assemblies",
+            ]
             
-            command = AdomdCommand(query, self.connection)
-            reader = command.ExecuteReader()
+            for dll_path in dll_paths:
+                if os.path.exists(dll_path) and dll_path not in sys.path:
+                    sys.path.append(dll_path)
+                    os.environ['PATH'] = dll_path + os.pathsep + os.environ.get('PATH', '')
+            
+            # Carregar TOM
+            clr.AddReference("Microsoft.AnalysisServices.Tabular")
+            from Microsoft.AnalysisServices.Tabular import Server
+            
+            # Conectar via TOM
+            server = Server()
+            server.Connect(self.connection_string)
+            
+            if server.Databases.Count == 0:
+                server.Disconnect()
+                return {
+                    'success': False,
+                    'message': 'Nenhum database encontrado'
+                }
+            
+            db = server.Databases[0]
+            model = db.Model
             
             relationships = []
             
-            while reader.Read():
-                rel = {
-                    'RELATIONSHIP_NAME': str(reader['RELATIONSHIP_NAME']) if reader['RELATIONSHIP_NAME'] else None,
-                    'FROM_TABLE': str(reader['FROM_TABLE']) if reader['FROM_TABLE'] else None,
-                    'FROM_COLUMN': str(reader['FROM_COLUMN']) if reader['FROM_COLUMN'] else None,
-                    'TO_TABLE': str(reader['TO_TABLE']) if reader['TO_TABLE'] else None,
-                    'TO_COLUMN': str(reader['TO_COLUMN']) if reader['TO_COLUMN'] else None,
-                    'CROSS_FILTERING_BEHAVIOR': str(reader['CROSS_FILTERING_BEHAVIOR']) if reader['CROSS_FILTERING_BEHAVIOR'] else None,
-                    'IS_ACTIVE': bool(reader['IS_ACTIVE']) if reader['IS_ACTIVE'] else False
-                }
-                relationships.append(rel)
+            # Iterar relacionamentos
+            for rel in model.Relationships:
+                relationships.append({
+                    'RELATIONSHIP_NAME': rel.Name,
+                    'FROM_TABLE': rel.FromTable.Name,
+                    'FROM_COLUMN': rel.FromColumn.Name,
+                    'TO_TABLE': rel.ToTable.Name,
+                    'TO_COLUMN': rel.ToColumn.Name,
+                    'CROSS_FILTERING_BEHAVIOR': str(rel.CrossFilteringBehavior),
+                    'IS_ACTIVE': rel.IsActive,
+                    'FROM_CARDINALITY': str(rel.FromCardinality),
+                    'TO_CARDINALITY': str(rel.ToCardinality)
+                })
             
-            reader.Close()
+            server.Disconnect()
             
             return {
                 'success': True,
