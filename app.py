@@ -100,7 +100,7 @@ def main():
         # Seleção de modo
         mode = st.radio(
             "Modo de Operação",
-            ["🎨 Análise Completa", "🔌 Conectar ao Power BI", "🎨 Paletas de Cores", "📐 Templates de Layout", "🤖 Assistente IA"],
+            ["🎨 Análise Completa", "🔌 Conectar ao Power BI", "✏️ Console DAX", "📏 Criar Medida", "✅ Validar DAX", "🎨 Paletas de Cores", "📐 Templates de Layout", "🤖 Assistente IA"],
             help="Escolha o que deseja fazer"
         )
         
@@ -133,6 +133,12 @@ def main():
         render_complete_analysis(modules)
     elif mode == "🔌 Conectar ao Power BI":
         render_powerbi_connection(modules)
+    elif mode == "✏️ Console DAX":
+        render_dax_console(modules)
+    elif mode == "📏 Criar Medida":
+        render_create_measure(modules)
+    elif mode == "✅ Validar DAX":
+        render_validate_dax(modules)
     elif mode == "🎨 Paletas de Cores":
         render_color_generator(modules)
     elif mode == "📐 Templates de Layout":
@@ -924,3 +930,490 @@ def render_powerbi_export(connector, modules):
 if __name__ == "__main__":
 
     main()
+
+
+def render_dax_console(modules):
+    """Renderiza console DAX interativo"""
+    st.header("✏️ Console DAX Interativo")
+    
+    # Verificar conexão
+    connector = modules.get('connector')
+    if not connector or not connector.is_connected():
+        st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
+        st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
+        return
+    
+    st.success(f"✅ Conectado: {connector.active_connection.get('dataset', 'Unknown')}")
+    
+    # Console DAX
+    st.markdown("### 📝 Editor DAX")
+    
+    # Histórico de queries
+    if 'dax_history' not in st.session_state:
+        st.session_state.dax_history = []
+    
+    # Query templates
+    with st.expander("📚 Templates de Queries"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("📊 Listar Tabelas"):
+                st.session_state.dax_query = """EVALUATE
+INFO.TABLES()"""
+        
+            if st.button("📏 Listar Medidas"):
+                st.session_state.dax_query = """EVALUATE
+INFO.MEASURES()"""
+        
+        with col2:
+            if st.button("📈 Sample de Tabela"):
+                st.session_state.dax_query = """EVALUATE
+TOPN(10, 'NomeDaTabela')"""
+            
+            if st.button("🔍 Query Personalizada"):
+                st.session_state.dax_query = """EVALUATE
+ROW(
+    "Total", SUM('Tabela'[Coluna])
+)"""
+    
+    # Editor principal
+    default_query = st.session_state.get('dax_query', "EVALUATE\nINFO.TABLES()")
+    
+    dax_query = st.text_area(
+        "Query DAX:",
+        value=default_query,
+        height=200,
+        help="Digite sua query DAX. Use EVALUATE para queries de retorno de dados."
+    )
+    
+    # Opções de execução
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        max_rows = st.number_input("Máximo de linhas", min_value=10, max_value=10000, value=100)
+    
+    with col2:
+        validate_first = st.checkbox("Validar antes", value=True)
+    
+    with col3:
+        save_to_history = st.checkbox("Salvar histórico", value=True)
+    
+    # Botão de execução
+    if st.button("▶️ Executar Query", type="primary"):
+        with st.spinner("Executando query..."):
+            # Validar se solicitado
+            if validate_first:
+                # Extrair expressão para validação (remover EVALUATE se presente)
+                test_expr = dax_query.strip()
+                if test_expr.upper().startswith("EVALUATE"):
+                    validation = {'valid': True}  # Query completa, não precisa validar expressão
+                else:
+                    validation = connector.validate_dax(test_expr)
+                
+                if not validation.get('valid', False):
+                    st.error(f"❌ Erro de validação: {validation.get('error', 'Expressão inválida')}")
+                    return
+            
+            # Executar query
+            try:
+                result = connector.execute_dax_query(dax_query, max_rows=max_rows)
+                
+                if result.get('success'):
+                    st.success("✅ Query executada com sucesso!")
+                    
+                    # Salvar no histórico
+                    if save_to_history:
+                        st.session_state.dax_history.insert(0, {
+                            'query': dax_query,
+                            'timestamp': pd.Timestamp.now().isoformat(),
+                            'rows': len(result.get('rows', []))
+                        })
+                        # Limitar histórico a 10 queries
+                        st.session_state.dax_history = st.session_state.dax_history[:10]
+                    
+                    # Mostrar resultados
+                    rows = result.get('rows', [])
+                    if rows:
+                        st.markdown(f"**📊 Resultado: {len(rows)} linha(s)**")
+                        
+                        # Converter para DataFrame
+                        df = pd.DataFrame(rows)
+                        st.dataframe(df, use_container_width=True)
+                        
+                        # Botão de download
+                        csv = df.to_csv(index=False)
+                        st.download_button(
+                            label="💾 Baixar como CSV",
+                            data=csv,
+                            file_name="query_result.csv",
+                            mime="text/csv"
+                        )
+                    else:
+                        st.info("Query executada mas não retornou dados")
+                
+                else:
+                    st.error(f"❌ Erro ao executar: {result.get('error', 'Unknown error')}")
+                    
+            except Exception as e:
+                st.error(f"❌ Exceção ao executar: {str(e)}")
+    
+    # Histórico
+    if st.session_state.dax_history:
+        st.markdown("---")
+        st.markdown("### 📜 Histórico de Queries")
+        
+        for idx, entry in enumerate(st.session_state.dax_history):
+            with st.expander(f"Query {idx + 1} - {entry['timestamp'][:19]} ({entry['rows']} linhas)"):
+                st.code(entry['query'], language='sql')
+                if st.button(f"🔄 Executar novamente", key=f"rerun_{idx}"):
+                    st.session_state.dax_query = entry['query']
+                    st.rerun()
+
+
+def render_create_measure(modules):
+    """Renderiza interface para criação de medidas"""
+    st.header("📏 Criar Nova Medida")
+    
+    # Verificar conexão
+    connector = modules.get('connector')
+    if not connector or not connector.is_connected():
+        st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
+        st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
+        return
+    
+    st.success(f"✅ Conectado: {connector.active_connection.get('dataset', 'Unknown')}")
+    
+    # Obter estrutura
+    structure = connector.get_model_structure()
+    tables = structure.get('tables', [])
+    
+    if not tables:
+        st.error("❌ Nenhuma tabela encontrada no modelo")
+        return
+    
+    # Formulário de criação
+    st.markdown("### 📝 Definição da Medida")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Seleção de tabela
+        table_names = [t['name'] for t in tables]
+        selected_table = st.selectbox(
+            "Tabela de destino:",
+            table_names,
+            help="Selecione a tabela onde a medida será criada"
+        )
+    
+    with col2:
+        # Nome da medida
+        measure_name = st.text_input(
+            "Nome da medida:",
+            placeholder="ex: Total de Vendas",
+            help="Nome único para a medida"
+        )
+    
+    # Descrição (opcional)
+    measure_description = st.text_input(
+        "Descrição (opcional):",
+        placeholder="Descreva o que esta medida calcula",
+        help="Ajuda a documentar o propósito da medida"
+    )
+    
+    # Expression DAX
+    st.markdown("#### Expressão DAX:")
+    
+    # Templates de medidas comuns
+    with st.expander("📚 Templates de Medidas"):
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("Σ Soma"):
+                st.session_state.measure_expr = f"SUM('{selected_table}'[Coluna])"
+            if st.button("📊 Média"):
+                st.session_state.measure_expr = f"AVERAGE('{selected_table}'[Coluna])"
+        
+        with col2:
+            if st.button("🔢 Contagem"):
+                st.session_state.measure_expr = f"COUNTROWS('{selected_table}')"
+            if st.button("📈 Min/Max"):
+                st.session_state.measure_expr = f"MAX('{selected_table}'[Coluna])"
+        
+        with col3:
+            if st.button("💰 Formatado"):
+                st.session_state.measure_expr = f"FORMAT(SUM('{selected_table}'[Valor]), \"R$ #,##0.00\")"
+            if st.button("% Percentual"):
+                st.session_state.measure_expr = f"DIVIDE(SUM('{selected_table}'[Parcial]), SUM('{selected_table}'[Total]))"
+    
+    # Editor de expressão
+    default_expr = st.session_state.get('measure_expr', f"SUM('{selected_table}'[Coluna])")
+    
+    dax_expression = st.text_area(
+        "Expressão DAX:",
+        value=default_expr,
+        height=150,
+        help="Digite a expressão DAX para calcular a medida"
+    )
+    
+    # Validação em tempo real
+    if dax_expression.strip():
+        if st.button("🔍 Validar Expressão"):
+            with st.spinner("Validando..."):
+                validation = connector.validate_dax(dax_expression)
+                
+                if validation.get('valid'):
+                    st.success("✅ Expressão DAX válida!")
+                else:
+                    st.error(f"❌ Erro: {validation.get('error', 'Expressão inválida')}")
+    
+    # Formato (opcional)
+    with st.expander("🎨 Formatação (opcional)"):
+        format_string = st.selectbox(
+            "Formato de exibição:",
+            [
+                "General (padrão)",
+                "0 (inteiro)",
+                "#,##0 (inteiro com separador)",
+                "#,##0.00 (duas casas decimais)",
+                "R$ #,##0.00 (moeda)",
+                "0.00% (percentual)",
+                "dd/mm/yyyy (data)"
+            ]
+        )
+    
+    st.markdown("---")
+    
+    # Aviso importante
+    st.warning("""
+    ⚠️ **Nota Importante:**
+    
+    A criação de medidas via API requer **XMLA Write Access** que não está disponível no Power BI Desktop.
+    
+    Esta funcionalidade irá:
+    1. ✅ Validar a expressão DAX
+    2. ✅ Gerar o código TMSL
+    3. ✅ Salvar a definição para uso posterior
+    4. ⚠️ Não criar automaticamente no modelo
+    
+    **Para aplicar no modelo:**
+    - Copie a expressão gerada
+    - No Power BI Desktop: Home → New Measure
+    - Cole e execute a expressão
+    """)
+    
+    # Botão de criação
+    if st.button("📏 Gerar Medida", type="primary", disabled=not measure_name or not dax_expression):
+        with st.spinner("Gerando medida..."):
+            # Validar primeiro
+            validation = connector.validate_dax(dax_expression)
+            
+            if not validation.get('valid'):
+                st.error(f"❌ Expressão inválida: {validation.get('error')}")
+                return
+            
+            # Gerar TMSL
+            measure_def = {
+                'name': measure_name,
+                'table': selected_table,
+                'expression': dax_expression,
+                'description': measure_description,
+                'format': format_string if format_string != "General (padrão)" else None
+            }
+            
+            # Salvar na sessão
+            if 'created_measures' not in st.session_state:
+                st.session_state.created_measures = []
+            
+            st.session_state.created_measures.append(measure_def)
+            
+            st.success("✅ Medida gerada com sucesso!")
+            
+            # Mostrar resultado
+            with st.expander("📋 Definição da Medida", expanded=True):
+                st.markdown(f"**Nome:** `{measure_name}`")
+                st.markdown(f"**Tabela:** `{selected_table}`")
+                if measure_description:
+                    st.markdown(f"**Descrição:** {measure_description}")
+                
+                st.markdown("**Expressão DAX:**")
+                st.code(dax_expression, language='sql')
+                
+                # Botão de cópia
+                st.code(f"{measure_name} = {dax_expression}", language='sql')
+                
+                st.info("💡 Copie o código acima e cole no Power BI Desktop (Home → New Measure)")
+            
+            # Download JSON
+            json_def = json.dumps(measure_def, indent=2)
+            st.download_button(
+                label="💾 Baixar Definição (JSON)",
+                data=json_def,
+                file_name=f"measure_{measure_name.replace(' ', '_')}.json",
+                mime="application/json"
+            )
+    
+    # Histórico de medidas criadas
+    if 'created_measures' in st.session_state and st.session_state.created_measures:
+        st.markdown("---")
+        st.markdown("### 📜 Medidas Criadas Nesta Sessão")
+        
+        for idx, measure in enumerate(st.session_state.created_measures):
+            with st.expander(f"📏 {measure['name']} (Tabela: {measure['table']})"):
+                st.code(f"{measure['name']} = {measure['expression']}", language='sql')
+                if measure.get('description'):
+                    st.caption(measure['description'])
+
+
+def render_validate_dax(modules):
+    """Renderiza validador de DAX"""
+    st.header("✅ Validador de Expressões DAX")
+    
+    # Verificar conexão
+    connector = modules.get('connector')
+    if not connector or not connector.is_connected():
+        st.warning("⚠️ Conecte-se ao Power BI Desktop primeiro")
+        st.info("👉 Vá para '🔌 Conectar ao Power BI' para estabelecer conexão")
+        return
+    
+    st.success(f"✅ Conectado: {connector.active_connection.get('dataset', 'Unknown')}")
+    
+    st.markdown("""
+    ### 🔍 Como Funciona
+    
+    O validador tenta executar sua expressão em uma query de teste:
+    ```dax
+    EVALUATE ROW("Result", <SUA_EXPRESSÃO>)
+    ```
+    
+    Se a query executar sem erros, a expressão é válida!
+    """)
+    
+    # Exemplos
+    with st.expander("📚 Exemplos de Expressões"):
+        st.markdown("""
+        **✅ Válidas:**
+        - `SUM('Vendas'[Valor])`
+        - `COUNTROWS('Produtos')`
+        - `CALCULATE(SUM('Vendas'[Valor]), 'Data'[Ano] = 2024)`
+        - `DIVIDE([Total Vendas], [Quantidade], 0)`
+        
+        **❌ Inválidas:**
+        - `SUM('TabelaInexistente'[Coluna])`
+        - `COUNTROWS(TabelaSemAspas)`
+        - `SUM('Vendas'[Valor]` (falta fechar parêntese)
+        - `CALCULATE()` (falta expressão)
+        """)
+    
+    # Editor de expressão
+    st.markdown("### 📝 Digite a Expressão DAX")
+    
+    dax_expression = st.text_area(
+        "Expressão:",
+        height=200,
+        placeholder="Ex: SUM('Vendas'[Valor])",
+        help="Digite a expressão DAX que deseja validar"
+    )
+    
+    # Opções
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        show_result = st.checkbox("Mostrar resultado da execução", value=False)
+    
+    with col2:
+        test_value = st.checkbox("Executar e retornar valor", value=False)
+    
+    # Validar
+    if st.button("🔍 Validar Expressão", type="primary", disabled=not dax_expression.strip()):
+        with st.spinner("Validando expressão..."):
+            validation = connector.validate_dax(dax_expression)
+            
+            if validation.get('valid'):
+                st.success("✅ Expressão DAX VÁLIDA!")
+                
+                # Se solicitado, executar e mostrar resultado
+                if test_value or show_result:
+                    try:
+                        test_query = f'EVALUATE ROW("Result", {dax_expression})'
+                        result = connector.execute_dax_query(test_query, max_rows=1)
+                        
+                        if result.get('success'):
+                            rows = result.get('rows', [])
+                            if rows:
+                                st.markdown("**🎯 Valor Calculado:**")
+                                st.json(rows[0])
+                    except Exception as e:
+                        st.warning(f"⚠️ Expressão válida mas erro ao calcular: {str(e)}")
+                
+                # Análise da expressão
+                with st.expander("📊 Análise da Expressão"):
+                    st.markdown(f"**Tamanho:** {len(dax_expression)} caracteres")
+                    
+                    # Detectar funções usadas
+                    import re
+                    functions = re.findall(r'\b([A-Z]+)\s*\(', dax_expression)
+                    if functions:
+                        st.markdown(f"**Funções detectadas:** {', '.join(set(functions))}")
+                    
+                    # Detectar referências a tabelas
+                    tables = re.findall(r"'([^']+)'\[", dax_expression)
+                    if tables:
+                        st.markdown(f"**Tabelas referenciadas:** {', '.join(set(tables))}")
+            
+            else:
+                st.error("❌ Expressão DAX INVÁLIDA")
+                
+                error_msg = validation.get('error', 'Erro desconhecido')
+                st.markdown("**❗ Erro:**")
+                st.code(error_msg, language='text')
+                
+                # Sugestões de correção
+                with st.expander("💡 Sugestões de Correção"):
+                    st.markdown("""
+                    Verifique:
+                    - ✓ Nomes de tabelas entre aspas simples: `'NomeTabela'`
+                    - ✓ Colunas no formato: `'Tabela'[Coluna]`
+                    - ✓ Parênteses balanceados
+                    - ✓ Vírgulas entre argumentos
+                    - ✓ Nomes corretos (case-sensitive)
+                    - ✓ Sintaxe das funções DAX
+                    """)
+    
+    # Batch validation
+    st.markdown("---")
+    st.markdown("### 📦 Validação em Lote")
+    
+    batch_expressions = st.text_area(
+        "Digite várias expressões (uma por linha):",
+        height=150,
+        placeholder="SUM('Vendas'[Valor])\nCOUNTROWS('Produtos')\nAVERAGE('Vendas'[Preco])"
+    )
+    
+    if st.button("🔍 Validar Todas"):
+        if batch_expressions.strip():
+            expressions = [e.strip() for e in batch_expressions.split('\n') if e.strip()]
+            
+            st.markdown(f"**Validando {len(expressions)} expressões...**")
+            
+            results = []
+            for expr in expressions:
+                validation = connector.validate_dax(expr)
+                results.append({
+                    'expression': expr,
+                    'valid': validation.get('valid'),
+                    'error': validation.get('error')
+                })
+            
+            # Resumo
+            valid_count = sum(1 for r in results if r['valid'])
+            st.metric("Válidas", f"{valid_count}/{len(results)}")
+            
+            # Detalhes
+            for idx, result in enumerate(results, 1):
+                status = "✅" if result['valid'] else "❌"
+                with st.expander(f"{status} Expressão {idx}"):
+                    st.code(result['expression'], language='sql')
+                    if not result['valid']:
+                        st.error(result['error'])
+
+
