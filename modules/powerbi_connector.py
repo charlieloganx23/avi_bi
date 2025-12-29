@@ -87,10 +87,14 @@ class PowerBIConnector:
                         try:
                             port = int(port_result.stdout.strip())
                             print(f"✅ Porta encontrada: {port}")
+                            
+                            # Obter o nome real do database via TOM
+                            db_name = self._get_database_name(port)
+                            
                             instances.append({
                                 'name': f'localhost:{port}',
                                 'port': port,
-                                'dataset': title,
+                                'dataset': db_name or title,
                                 'process_id': pid
                             })
                         except ValueError:
@@ -155,6 +159,10 @@ class PowerBIConnector:
             if not self._is_port_open('localhost', port):
                 print(f"❌ Porta {port} não está acessível")
                 return False
+            
+            # Se dataset_name não foi fornecido, tenta descobrir via TOM
+            if not dataset_name:
+                dataset_name = self._get_database_name(port)
             
             # Cria string de conexão
             connection_string = f"Data Source=localhost:{port}"
@@ -546,6 +554,54 @@ class PowerBIConnector:
         except:
             return False
     
+    def _get_database_name(self, port: int) -> str:
+        """
+        Obtém o nome do database via TOM conectando sem Initial Catalog
+        
+        Args:
+            port: Porta do Analysis Services
+            
+        Returns:
+            Nome do database ou None
+        """
+        try:
+            import clr
+            import sys
+            import os
+            
+            # Adicionar caminhos das DLLs
+            dll_paths = [
+                r"C:\Program Files\Microsoft.NET\ADOMD.NET\160",
+                r"C:\Program Files (x86)\Microsoft SQL Server Management Studio 20\Common7\IDE",
+                r"C:\Program Files\Microsoft SQL Server\160\DTS\Binn",
+            ]
+            
+            for dll_path in dll_paths:
+                if os.path.exists(dll_path) and dll_path not in sys.path:
+                    sys.path.append(dll_path)
+                    os.environ['PATH'] = dll_path + os.pathsep + os.environ.get('PATH', '')
+            
+            # Carregar TOM
+            clr.AddReference("Microsoft.AnalysisServices.Tabular")
+            from Microsoft.AnalysisServices.Tabular import Server
+            
+            # Conectar sem especificar database
+            server = Server()
+            server.Connect(f"DataSource=localhost:{port}")
+            
+            # Obter primeiro database
+            if server.Databases.Count > 0:
+                db_name = server.Databases[0].Name
+                server.Disconnect()
+                return db_name
+            
+            server.Disconnect()
+            return None
+            
+        except Exception as e:
+            print(f"⚠️ Erro ao obter database name: {e}")
+            return None
+    
     def _get_structure_via_tom(self) -> Dict[str, Any]:
         """
         Obtém estrutura do modelo via TOM (Tabular Object Model)
@@ -556,6 +612,21 @@ class PowerBIConnector:
         
         try:
             import clr
+            import sys
+            import os
+            
+            # Adicionar diretórios conhecidos das DLLs ao PATH
+            dll_paths = [
+                r"C:\Program Files\Microsoft.NET\ADOMD.NET\160",
+                r"C:\Program Files (x86)\Microsoft SQL Server Management Studio 20\Common7\IDE",
+                r"C:\Program Files\Microsoft SQL Server\160\DTS\Binn",
+                r"C:\Program Files\Microsoft SQL Server\160\SDK\Assemblies",
+            ]
+            
+            for dll_path in dll_paths:
+                if os.path.exists(dll_path) and dll_path not in sys.path:
+                    sys.path.append(dll_path)
+                    os.environ['PATH'] = dll_path + os.pathsep + os.environ.get('PATH', '')
             
             # Tentar carregar Microsoft.AnalysisServices.Tabular
             try:

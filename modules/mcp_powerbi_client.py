@@ -21,6 +21,19 @@ class MCPPowerBIClient:
             import sys
             import os
             
+            # Adicionar diretórios conhecidos das DLLs ao PATH
+            dll_paths = [
+                r"C:\Program Files\Microsoft.NET\ADOMD.NET\160",
+                r"C:\Program Files (x86)\Microsoft SQL Server Management Studio 20\Common7\IDE",
+                r"C:\Program Files\Microsoft SQL Server\160\DTS\Binn",
+                r"C:\Program Files\Microsoft SQL Server\160\SDK\Assemblies",
+            ]
+            
+            for dll_path in dll_paths:
+                if os.path.exists(dll_path) and dll_path not in sys.path:
+                    sys.path.append(dll_path)
+                    os.environ['PATH'] = dll_path + os.pathsep + os.environ.get('PATH', '')
+            
             # Tentar adicionar referências para Microsoft.AnalysisServices.AdomdClient
             try:
                 clr.AddReference("Microsoft.AnalysisServices.AdomdClient")
@@ -68,7 +81,7 @@ class MCPPowerBIClient:
         """Desconecta do Analysis Services"""
         if self.connection:
             try:
-                self.connection.close()
+                self.connection.Close()  # Usar Close() com C maiúsculo
                 self.connection = None
                 print("✅ Desconectado do Analysis Services")
                 return True

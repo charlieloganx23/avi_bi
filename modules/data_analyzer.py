@@ -307,8 +307,8 @@ class DataAnalyzer:
             # Analisar colunas
             for column in table.get('columns', []):
                 col_info = {
-                    'name': column['name'],
-                    'dataType': column.get('dataType', 'Unknown'),
+                    'name': column.get('ColumnName') or column.get('name', 'Unknown'),
+                    'dataType': column.get('DataType') or column.get('dataType', 'Unknown'),
                     'semantic_type': self._map_powerbi_to_semantic_type(column),
                     'suggested_format': self._suggest_format_for_column(column)
                 }
@@ -317,8 +317,8 @@ class DataAnalyzer:
             # Analisar medidas
             for measure in table.get('measures', []):
                 measure_info = {
-                    'name': measure['name'],
-                    'expression': measure.get('expression', ''),
+                    'name': measure.get('MeasureName') or measure.get('name', 'Unknown'),
+                    'expression': measure.get('Expression') or measure.get('expression', ''),
                     'format': measure.get('formatString', '')
                 }
                 table_info['measures'].append(measure_info)
@@ -359,8 +359,8 @@ class DataAnalyzer:
     
     def _map_powerbi_to_semantic_type(self, column: Dict) -> str:
         """Mapeia tipo de dado Power BI para tipo semântico"""
-        data_type = column.get('dataType', '').lower()
-        column_name = column.get('name', '').lower()
+        data_type = (column.get('DataType') or column.get('dataType', '')).lower()
+        column_name = (column.get('ColumnName') or column.get('name', '')).lower()
         
         # Mapeamento por tipo de dado
         if data_type in ['datetime', 'date']:
@@ -385,8 +385,8 @@ class DataAnalyzer:
     
     def _suggest_format_for_column(self, column: Dict) -> str:
         """Sugere formato adequado para coluna Power BI"""
-        data_type = column.get('dataType', '').lower()
-        column_name = column.get('name', '').lower()
+        data_type = (column.get('DataType') or column.get('dataType', '')).lower()
+        column_name = (column.get('ColumnName') or column.get('name', '')).lower()
         
         if data_type in ['datetime', 'date']:
             return 'dd/mm/yyyy'
